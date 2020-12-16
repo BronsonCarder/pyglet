@@ -86,16 +86,16 @@ def buttons_string(buttons):
         button_names.append('MIDDLE')
     if buttons & RIGHT:
         button_names.append('RIGHT')
-    if buttons & XBUTTON1:
-        button_names.append('XBUTTON1')
-    if buttons & XBUTTON2:
-        button_names.append('XBUTTON2')
+    if buttons & BACK:
+        button_names.append('BACK')
+    if buttons & FORWARD:
+        button_names.append('FORWARD')
     return '|'.join(button_names)
 
 
 # Symbolic names for the mouse buttons
-LEFT = 1 << 0
-MIDDLE = 1 << 1
-RIGHT = 1 << 2
-XBUTTON1 = 1 << 3
-XBUTTON2 = 1 << 4
+LEFT = 1
+MIDDLE = 2
+RIGHT = 4
+BACK = 8
+FORWARD = 16

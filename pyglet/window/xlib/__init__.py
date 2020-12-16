@@ -123,8 +123,6 @@ XlibEventHandler = _PlatformEventHandler
 ViewEventHandler = _ViewEventHandler
 
 
-
-
 class XlibWindow(BaseWindow):
     _x_display = None               # X display connection
     _x_screen_id = None             # X screen index
@@ -139,7 +137,6 @@ class XlibWindow(BaseWindow):
     _width = 0
     _height = 0                     # Last known window size
     _mouse_exclusive_client = None  # x,y of "real" mouse during exclusive
-    _mouse_buttons = [False] * 6    # State of each xlib button
     _keyboard_exclusive = False
     _active = True
     _applied_mouse_exclusive = False
@@ -1452,24 +1449,32 @@ class XlibWindow(BaseWindow):
     def _event_button(self, ev):
         x = ev.xbutton.x
         y = self.height - ev.xbutton.y
-        button = 1 << (ev.xbutton.button - 1)  # 1, 2, 3 -> 1, 2, 4
+
+        # convert the button event to symbolic name
+        button = {1: mouse.LEFT,
+                  2: mouse.MIDDLE,
+                  3: mouse.RIGHT,
+                  8: mouse.BACK,
+                  9: mouse.FORWARD}.get(ev.xbutton.button, None)
+
         modifiers = self._translate_modifiers(ev.xbutton.state)
+
         if ev.type == xlib.ButtonPress:
             # override_redirect issue: manually activate this window if
             # fullscreen.
             if self._override_redirect and not self._active:
                 self.activate()
 
+            # Buttons 4~7 are scroll events. (Horizontal not yet implemented).
             if ev.xbutton.button == 4:
                 self.dispatch_event('on_mouse_scroll', x, y, 0, 1)
             elif ev.xbutton.button == 5:
                 self.dispatch_event('on_mouse_scroll', x, y, 0, -1)
-            elif ev.xbutton.button < len(self._mouse_buttons):
-                self._mouse_buttons[ev.xbutton.button] = True
+            else:
                 self.dispatch_event('on_mouse_press', x, y, button, modifiers)
-        else:
-            if ev.xbutton.button < 4:
-                self._mouse_buttons[ev.xbutton.button] = False
+
+        elif ev.type == xlib.ButtonRelease:
+            if ev.xbutton.button not in (4, 5, 6, 7):
                 self.dispatch_event('on_mouse_release', x, y, button, modifiers)
 
     @ViewEventHandler
@@ -1485,21 +1490,10 @@ class XlibWindow(BaseWindow):
     @ViewEventHandler
     @XlibEventHandler(xlib.EnterNotify)
     def _event_enternotify(self, ev):
-        # figure active mouse buttons
-        # XXX ignore modifier state?
-        state = ev.xcrossing.state
-        self._mouse_buttons[1] = state & xlib.Button1Mask
-        self._mouse_buttons[2] = state & xlib.Button2Mask
-        self._mouse_buttons[3] = state & xlib.Button3Mask
-        self._mouse_buttons[4] = state & xlib.Button4Mask
-        self._mouse_buttons[5] = state & xlib.Button5Mask
-
         # mouse position
         x = self._mouse_x = ev.xcrossing.x
         y = self._mouse_y = self.height - ev.xcrossing.y
         self._mouse_in_window = True
-
-        # XXX there may be more we could do here
         self.dispatch_event('on_mouse_enter', x, y)
 
     @ViewEventHandler
